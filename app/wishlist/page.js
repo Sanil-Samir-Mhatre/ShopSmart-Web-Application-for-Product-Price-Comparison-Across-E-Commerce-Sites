@@ -5,7 +5,7 @@ import { useSearch } from '@/context/SearchContext';
 import '../search/search.css';
 
 export default function WishlistPage() {
-    const { wishlist, toggleWishlist } = useSearch();
+    const { wishlist, toggleWishlist, lastImage } = useSearch();
 
     return (
         <main className="search-main-container">
@@ -23,7 +23,11 @@ export default function WishlistPage() {
                     ) : (
                         wishlist.map((item, idx) => (
                             <div className="deal-card" key={idx}>
-                                <img src={item.image || '/Images/Logo_shopsmart.png'} alt={item.store} className="deal-img" />
+                                <img 
+                                    src={(item.image && !item.image.includes('placeholder')) ? item.image : (lastImage || '/Images/Logo_shopsmart.png')} 
+                                    alt={item.store} 
+                                    className="deal-img" 
+                                />
                                 <div className="deal-details">
                                     <h3>{item.title}</h3>
                                     <div className="deal-meta">

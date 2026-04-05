@@ -130,10 +130,16 @@ export function SearchProvider({ children }) {
         } else {
             // Add
             try {
+                // Ensure Gemini results have an image (fallback to lastImage)
+                const dealToSave = { ...deal };
+                if (!dealToSave.image || dealToSave.image.includes('placeholder')) {
+                    dealToSave.image = lastImage || '/Images/Logo_shopsmart.png';
+                }
+
                 const res = await fetch(`${API_URL}/api/wishlist`, {
                     method: 'POST',
                     headers: { 'Authorization': token, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(deal)
+                    body: JSON.stringify(dealToSave)
                 });
                 if (res.ok) {
                     fetchWishlist(token);
