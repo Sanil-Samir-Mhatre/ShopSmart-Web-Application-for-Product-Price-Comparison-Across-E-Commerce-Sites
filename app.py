@@ -175,7 +175,7 @@ def add_history():
 def identify():
     try:
         data = request.json
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = "You are an expert product identifier. Analyze this product image or text query and extract accurate information. Return strictly in valid JSON format: {\"product_name\":\"\", \"brand\": \"\", \"model_number\": \"\", \"category\": \"\", \"key_features\": []}. Do not include markdown."
         
@@ -187,17 +187,9 @@ def identify():
             contents.append(f"Product Search Query: {data['text']}")
             
         response = model.generate_content(contents)
-        text = response.text
-        print(f"AI Identify Response: {text}") # Diagnostic
+        text = response.text.replace('```json', '').replace('```', '').strip()
         
-        # Robust JSON extraction
-        import re
-        json_match = re.search(r'\{.*\}', text, re.DOTALL)
-        if json_match:
-            return jsonify(json.loads(json_match.group(0)))
-            
-        cleaned_text = text.replace('```json', '').replace('```', '').strip()
-        return jsonify(json.loads(cleaned_text))
+        return jsonify(json.loads(text))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -216,7 +208,7 @@ def deals():
         exact_search_term = f"{brand} {product_name}".strip()
         
         if search_type == 'gemini':
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             prompt = f"""
 You are an expert E-Commerce Aggregator API.
 The user is searching for: "{brand} {product_name}".
@@ -238,19 +230,8 @@ Example Object structure:
 }}
 """
             response = model.generate_content(prompt)
-            text = response.text
-            print(f"AI Deals Response ({brand} {product_name}): {text}") # Diagnostic
-            
-            # Robust JSON extraction using regex (More general [.*] to catch full array)
-            import re
-            json_match = re.search(r'\[.*\]', text, re.DOTALL)
-            if json_match:
-                deals_list = json.loads(json_match.group(0))
-            else:
-                # Fallback to cleaning logic
-                cleaned_text = text.replace('```json', '').replace('```', '').strip()
-                deals_list = json.loads(cleaned_text)
-
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            deals_list = json.loads(text)
             return jsonify({"deals": deals_list})
             
         else:

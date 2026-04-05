@@ -121,7 +121,6 @@ export default function SearchPage() {
             payload = { image: lastImage };
         }
 
-        setShowUpload(false);
         setLoading(true);
         setError(null);
         setLoadingMessage(messages[0]);
@@ -144,60 +143,42 @@ export default function SearchPage() {
                 body: JSON.stringify(payload)
             });
             
-            if (!idRes.ok) {
-                const errData = await idRes.json().catch(() => ({}));
-                throw new Error(errData.error || "Could not identify product. Please check your internet or try a different search.");
-            }
+            if (!idRes.ok) throw new Error("Could not identify product. Please check your internet or try a different search.");
             
             const pInfo = await idRes.json();
             setProductInfo(pInfo);
 
-            setLoadingMessage("Fetching Discovery Options...");
-
-            // Use independent fetching to avoid whole-page crash if one API fails
-            let finalGDeals = [];
-            let finalSDeals = [];
-
-            try {
-                const geminiRes = await fetch(`${API_URL}/api/deals`, {
+            // Step 2: Fetch Deals for BOTH engines in parallel
+            const [geminiRes, shoppingRes] = await Promise.all([
+                fetch(`${API_URL}/api/deals`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ product_name: pInfo.product_name, brand: pInfo.brand, type: 'gemini' })
-                });
-                const gData = await geminiRes.json();
-                finalGDeals = gData.deals || [];
-            } catch (err) {
-                console.error("Gemini Engine Failed:", err);
-            }
-
-            try {
-                const shoppingRes = await fetch(`${API_URL}/api/deals`, {
+                }),
+                fetch(`${API_URL}/api/deals`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ product_name: pInfo.product_name, brand: pInfo.brand, type: 'shopping' })
-                });
-                const sData = await shoppingRes.json();
-                finalSDeals = sData.deals || [];
-            } catch (err) {
-                console.error("Shopping Engine Failed:", err);
-            }
+                })
+            ]);
+
+            const gData = await geminiRes.json();
+            const sData = await shoppingRes.json();
+
+            const finalGDeals = gData.deals || [];
+            const finalSDeals = sData.deals || [];
 
             if (finalGDeals.length === 0 && finalSDeals.length === 0) {
-                throw new Error("No specific deals found at this moment. Try searching for a broader product name.");
+                setError("No deals found for this product. Try adjusting your search term.");
             }
 
             setGeminiDeals(finalGDeals);
             setShoppingDeals(finalSDeals);
-            
-            // Default to whichever engine actually found something
-            if (finalGDeals.length === 0) setEngine('shopping');
-            else setEngine('gemini');
-
             setShowUpload(false);
             saveToHistory(pInfo.product_name, finalGDeals, finalSDeals, pInfo, lastImage);
         } catch (err) {
-            console.error("GLOBAL SEARCH ERROR:", err);
-            setError(err.message || "Failed to reach the ShopSmart API. Check your internet connection.");
+            console.error(err);
+            setError(err.message || "Failed to fetch deals. Ensure backend is running.");
         } finally {
             clearInterval(msgTimer);
             setLoading(false);
@@ -354,16 +335,6 @@ export default function SearchPage() {
                     )}
 
                     <button className="shopsmart-btn" onClick={() => handleSearch()}>ShopSmart</button>
-                    
-                    {error && (
-                        <div className="error-container" style={{ marginTop: '2rem' }}>
-                            <div className="error-box">
-                                <i className="fa-solid fa-triangle-exclamation error-icon"></i>
-                                <h3 className="error-title">Search Error</h3>
-                                <p className="error-msg">{error}</p>
-                            </div>
-                        </div>
-                    )}
                 </section>
             ) : (
                 <section className="results-container">
@@ -434,10 +405,10 @@ export default function SearchPage() {
                                     {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
                                 </div>
                             ) : error ? (
-                                <div className="error-container" style={{ gridColumn: '1 / -1' }}>
-                                    <div className="error-box" style={{ width: '100%' }}>
+                                <div className="error-container">
+                                    <div className="error-box">
                                         <i className="fa-solid fa-triangle-exclamation error-icon"></i>
-                                        <h3 className="error-title">Oops! Display Error</h3>
+                                        <h3 className="error-title">Oops! No Deals Found</h3>
                                         <p className="error-msg">{error}</p>
                                         <button className="shopsmart-btn" onClick={() => setShowUpload(true)} style={{ marginTop: '1rem' }}>
                                             TRY ANOTHER SEARCH
