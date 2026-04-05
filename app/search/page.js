@@ -98,12 +98,13 @@ export default function SearchPage() {
 
     const handleSearch = async (overrideText = null) => {
         let payload = {};
-        const queryText = overrideText || textInput;
+        // Ensure we handle cases where overrideText is an Event object from onClick
+        const queryText = (typeof overrideText === 'string') ? overrideText : textInput;
         const messages = activeTab === 'text' 
             ? ["The results are loading...", "Aggregating market data...", "Finding the best and lowest prices..."]
             : ["The results are loading...", "Identifying the product in your image...", "Searching across various e-commerce sites to give you the best prices..."];
 
-        if (activeTab === 'text' || overrideText) {
+        if (activeTab === 'text' || (typeof overrideText === 'string')) {
             if (!queryText) return alert("Please type something!");
             payload = { text: queryText };
             setLastImage(null);
@@ -306,7 +307,7 @@ export default function SearchPage() {
                         </div>
                     )}
 
-                    <button className="shopsmart-btn" onClick={handleSearch}>ShopSmart</button>
+                    <button className="shopsmart-btn" onClick={() => handleSearch()}>ShopSmart</button>
                 </section>
             ) : (
                 <section className="results-container">
